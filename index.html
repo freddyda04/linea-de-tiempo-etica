@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Del ágora al algoritmo</title>
+<meta name="description" content="Línea de tiempo interactiva de la historia de la ética, desde la Antigüedad hasta la ética de la IA. Electiva IV, Unidad I.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: una regla de 2.600 años proporcional arriba; debajo, cada etapa con su rótulo fijo a la izquierda y los hitos sobre un riel vertical. */
+:root {
+  --bg: #eceff2;
+  --surface: #ffffff;
+  --ink: #141c25;
+  --muted: #56616d;
+  --line: #c8d0d8;
+  --antigua: #94650c;
+  --medieval: #7b2b4b;
+  --moderna: #1c6b63;
+  --contemporanea: #2c50cc;
+  --ok: #1d7a3e;
+  --bad: #b3261e;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Spectral", Georgia, "Times New Roman", serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f141a; --surface: #18202a; --ink: #e5eaef; --muted: #9aa6b2; --line: #2d3946;
+    --antigua: #d9a441; --medieval: #d77fa0; --moderna: #4fc0b2; --contemporanea: #86a2ff;
+    --ok: #5fcf86; --bad: #ff8a80; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f141a; --surface: #18202a; --ink: #e5eaef; --muted: #9aa6b2; --line: #2d3946;
+  --antigua: #d9a441; --medieval: #d77fa0; --moderna: #4fc0b2; --contemporanea: #86a2ff;
+  --ok: #5fcf86; --bad: #ff8a80; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--body); font-size: 17px; line-height: 1.6;
+}
+.wrap {
+  max-width: 1120px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+h1, h2, h3 { font-family: var(--display); line-height: 1.12; text-wrap: balance; margin: 0; }
+p { margin: 0; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--contemporanea); outline-offset: 2px; }
+.eyebrow { font-family: var(--mono); font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+[data-era="antigua"] { --era: var(--antigua); }
+[data-era="medieval"] { --era: var(--medieval); }
+[data-era="moderna"] { --era: var(--moderna); }
+[data-era="contemporanea"] { --era: var(--contemporanea); }
+
+/* Cabecera */
+header.hero { padding-block: 48px 28px; display: grid; gap: 18px; }
+.hero h1 { font-size: clamp(40px, 7.5vw, 84px); font-weight: 800; letter-spacing: -0.02em; }
+.hero h1 .arrow { color: var(--contemporanea); }
+.hero .lede { max-width: 62ch; font-size: 19px; color: var(--muted); }
+.hero .lede strong { color: var(--ink); font-weight: 600; }
+
+/* Regla proporcional */
+.ruler-block { padding-block: 8px 28px; display: grid; gap: 10px; }
+.ruler-scroll { overflow-x: auto; padding-bottom: 6px; }
+.ruler { position: relative; min-width: 640px; height: 92px; }
+.ruler .seg {
+  position: absolute; top: 34px; height: 22px; background: var(--era);
+  border: 0; cursor: pointer; padding: 0; opacity: .9;
+}
+.ruler .seg:hover { opacity: 1; }
+.ruler .seg span {
+  position: absolute; top: -26px; left: 0; white-space: nowrap;
+  font-family: var(--display); font-weight: 700; font-size: 13.5px; color: var(--era);
+}
+.ruler .seg[data-era="contemporanea"] span { left: auto; right: 0; }
+.ruler .dot {
+  position: absolute; top: 40px; width: 10px; height: 10px; margin-left: -5px;
+  border-radius: 50%; background: var(--surface); border: 2px solid var(--ink);
+  cursor: pointer; padding: 0;
+}
+.ruler .dot.seen { background: var(--ink); }
+.ruler .dot:hover { transform: scale(1.5); }
+.ruler .tick { position: absolute; top: 62px; font-family: var(--mono); font-size: 11.5px; color: var(--muted); transform: translateX(-50%); white-space: nowrap; }
+.ruler .tick::before { content: ""; position: absolute; left: 50%; top: -6px; width: 1px; height: 5px; background: var(--muted); }
+.ruler-note { font-size: 15px; color: var(--muted); max-width: 70ch; }
+
+/* Controles */
+.controls {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg); border-block: 1px solid var(--line);
+  padding-block: 12px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.controls .wrap { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px;
+  padding: 5px 13px; font-family: var(--display); font-weight: 500; font-size: 14.5px; cursor: pointer;
+}
+.chip[data-era] { border-color: var(--era); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chip[data-era][aria-pressed="true"] { background: var(--era); border-color: var(--era); color: var(--surface); }
+.progress { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.bar { width: 120px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--ink); transition: width .3s; }
+
+/* Etapas */
+main { display: grid; gap: 0; }
+.era { padding-block: 40px; border-bottom: 1px solid var(--line); }
+.era .wrap { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 36px; }
+.era-head { align-self: start; position: sticky; top: 84px; display: grid; gap: 10px; }
+.era-head .range { font-family: var(--mono); font-size: 13px; color: var(--era); font-weight: 500; }
+.era-head h2 { font-size: 34px; color: var(--era); font-weight: 800; }
+.era-head p { font-size: 15.5px; color: var(--muted); }
+.era-head .kw { font-family: var(--display); font-size: 14px; color: var(--ink); font-weight: 500; }
+
+.rail { list-style: none; margin: 0; padding: 0 0 0 26px; border-left: 2px solid var(--era); display: grid; gap: 14px; }
+.rail li { position: relative; }
+.rail li::before {
+  content: ""; position: absolute; left: -33px; top: 22px; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--bg); border: 2px solid var(--era);
+}
+.rail li.seen::before { background: var(--era); }
+.card {
+  width: 100%; text-align: left; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+  padding: 14px 18px; display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; gap: 4px 16px; align-items: baseline;
+  transition: border-color .15s, transform .15s;
+}
+.card:hover { border-color: var(--era); transform: translateX(3px); }
+.card .yr { font-family: var(--mono); font-size: 14px; color: var(--era); font-weight: 500; font-variant-numeric: tabular-nums; }
+.card h3 { font-size: 19px; font-weight: 700; }
+.card .sub { grid-column: 2; font-size: 15.5px; color: var(--muted); }
+.badge {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 3px; white-space: nowrap; align-self: start;
+}
+.badge.clase { background: var(--ink); color: var(--bg); }
+.badge.amp { border: 1px solid var(--muted); color: var(--muted); }
+.empty { color: var(--muted); font-style: italic; }
+
+/* Diálogo de detalle */
+dialog {
+  width: min(720px, calc(100vw - 24px)); max-height: calc(100vh - 40px);
+  border: 0; border-top: 6px solid var(--era); border-radius: 8px; padding: 0;
+  background: var(--surface); color: var(--ink);
+}
+dialog::backdrop { background: rgba(10, 14, 20, .55); }
+.dlg { padding: 26px 28px 22px; display: grid; gap: 16px; }
+.dlg-top { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.dlg .meta { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-family: var(--mono); font-size: 13px; }
+.dlg .meta .e { color: var(--era); font-weight: 500; }
+.dlg h2 { font-size: clamp(26px, 4vw, 34px); font-weight: 800; }
+.dlg .who { color: var(--muted); font-style: italic; }
+.dlg blockquote { margin: 0; padding: 4px 0 4px 16px; border-left: 3px solid var(--era); font-style: italic; font-size: 18px; }
+.dlg .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.dlg .tags span { font-family: var(--display); font-size: 13.5px; border: 1px solid var(--era); color: var(--era); border-radius: 999px; padding: 2px 10px; }
+.it {
+  background: var(--bg); border-radius: 6px; padding: 14px 16px; display: grid; gap: 4px;
+}
+.it .eyebrow { color: var(--era); }
+.dlg-nav { display: flex; justify-content: space-between; gap: 10px; padding-top: 6px; border-top: 1px solid var(--line); }
+.btn {
+  border: 1.5px solid var(--ink); background: transparent; border-radius: 5px; padding: 7px 14px;
+  font-family: var(--display); font-weight: 500; font-size: 15px; cursor: pointer;
+}
+.btn:hover { background: var(--ink); color: var(--bg); }
+.btn:disabled { opacity: .35; cursor: default; background: transparent; color: var(--ink); }
+.close { border: 0; background: transparent; font-size: 26px; line-height: 1; cursor: pointer; padding: 0 4px; color: var(--muted); }
+
+/* Secciones finales */
+section.block { padding-block: 56px; border-bottom: 1px solid var(--line); }
+section.block .wrap { display: grid; gap: 22px; }
+section.block h2 { font-size: clamp(30px, 4.5vw, 44px); font-weight: 800; }
+.intro { max-width: 68ch; color: var(--muted); }
+.case {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 22px 24px; max-width: 78ch;
+  font-size: 18px;
+}
+.lenses { display: flex; flex-wrap: wrap; gap: 8px; }
+.lens-out {
+  border-left: 4px solid var(--era, var(--ink)); background: var(--surface); padding: 18px 22px; border-radius: 0 6px 6px 0;
+  max-width: 78ch; display: grid; gap: 8px; min-height: 120px;
+}
+.lens-out h3 { font-size: 21px; color: var(--era, var(--ink)); }
+.lens-out .verdict { font-family: var(--display); font-weight: 500; font-size: 15.5px; }
+
+.quiz { display: grid; gap: 18px; max-width: 78ch; }
+.q { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; display: grid; gap: 10px; }
+.q .n { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+.q .stem { font-weight: 600; }
+.opts { display: grid; gap: 6px; }
+.opt {
+  text-align: left; border: 1.5px solid var(--line); background: var(--bg); border-radius: 5px; padding: 8px 12px; cursor: pointer;
+}
+.opt:hover:not(:disabled) { border-color: var(--ink); }
+.opt.right { border-color: var(--ok); color: var(--ok); font-weight: 600; }
+.opt.wrong { border-color: var(--bad); color: var(--bad); text-decoration: line-through; }
+.opt:disabled { cursor: default; }
+.fb { font-size: 15.5px; color: var(--muted); }
+.score { font-family: var(--display); font-size: 20px; font-weight: 700; }
+
+.definition {
+  font-family: var(--display); font-weight: 500; font-size: clamp(21px, 2.6vw, 27px); line-height: 1.38;
+  max-width: 44ch; text-wrap: pretty;
+}
+.definition mark { background: none; color: var(--contemporanea); }
+.pillars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.pillar { display: grid; gap: 4px; padding-top: 10px; border-top: 3px solid var(--era); font-size: 15.5px; }
+.pillar b { font-family: var(--display); color: var(--era); }
+
+.refs { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; max-width: 86ch; font-size: 15.5px; }
+.refs li { padding-left: 2.2em; text-indent: -2.2em; }
+.refs a { color: var(--contemporanea); }
+footer { padding-block: 30px 48px; font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+
+@media (max-width: 820px) {
+  .era .wrap { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .era-head { position: static; }
+  .pillars { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .controls { position: static; }
+}
+@media (max-width: 520px) {
+  body { font-size: 16px; }
+  .card { grid-template-columns: minmax(0, 1fr) auto; }
+  .card .yr { grid-column: 1 / -1; }
+  .card .sub { grid-column: 1 / -1; }
+  .dlg { padding: 20px 18px 16px; }
+  .pillars { grid-template-columns: minmax(0, 1fr); }
+  .bar { width: 80px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="hero wrap">
+  <p class="eyebrow">Electiva IV · Ética · Unidad I · Línea de tiempo interactiva</p>
+  <h1>Del ágora <span class="arrow">→</span> al algoritmo</h1>
+  <p class="lede">Veintiséis siglos de preguntas sobre <strong>qué significa actuar bien</strong>, ordenados en las cuatro etapas de la historia de la ética y llevados hasta los dilemas que enfrenta hoy un ingeniero en informática. Pulsa cualquier hito para abrirlo; los marcados <strong>«Clase»</strong> vienen del material de la unidad y los marcados <strong>«Ampliación»</strong> son producto de la investigación.</p>
+</header>
+
+<section class="ruler-block wrap" aria-label="Regla proporcional del tiempo">
+  <p class="eyebrow">La historia a escala · 600 a.C. – 2026</p>
+  <div class="ruler-scroll"><div class="ruler" id="ruler"></div></div>
+  <p class="ruler-note">Cada punto es un hito, dibujado a escala real. La ética contemporánea ocupa apenas el último 6 % de la regla, pero concentra casi la mitad de los hitos: la técnica aceleró las preguntas morales.</p>
+</section>
+
+<nav class="controls" aria-label="Filtros">
+  <div class="wrap">
+    <div class="chips" role="group" aria-label="Filtrar por etapa" id="eraChips">
+      <button class="chip" aria-pressed="true" data-filter="todas">Todas</button>
+      <button class="chip" aria-pressed="false" data-filter="antigua" data-era="antigua">Antigua</button>
+      <button class="chip" aria-pressed="false" data-filter="medieval" data-era="medieval">Medieval</button>
+      <button class="chip" aria-pressed="false" data-filter="moderna" data-era="moderna">Moderna</button>
+      <button class="chip" aria-pressed="false" data-filter="contemporanea" data-era="contemporanea">Contemporánea</button>
+    </div>
+    <div class="chips" role="group" aria-label="Filtrar por origen" id="srcChips">
+      <button class="chip" aria-pressed="true" data-src="todo">Todo</button>
+      <button class="chip" aria-pressed="false" data-src="clase">Visto en clase</button>
+      <button class="chip" aria-pressed="false" data-src="amp">Ampliación</button>
+    </div>
+    <div class="progress"><span id="progTxt">0 / 0 explorados</span><span class="bar"><i id="progBar"></i></span></div>
+  </div>
+</nav>
+
+<main id="timeline"></main>
+
+<section class="block" id="dilema" aria-labelledby="dilemaT">
+  <div class="wrap">
+    <p class="eyebrow">Aplicación · Objetivo 3 de la unidad</p>
+    <h2 id="dilemaT">Un dilema informático, visto con cada lente</h2>
+    <div class="case">
+      Trabajas en una empresa que desarrolla una app de domicilios. Tu jefe te pide añadir un módulo que <b>registre la ubicación de los usuarios incluso con la app cerrada</b> para vender esos datos a anunciantes. La política de privacidad lo menciona en un párrafo que casi nadie lee. El lanzamiento es en dos semanas.
+    </div>
+    <p class="intro">Elige una doctrina para ver cómo analizaría el caso.</p>
+    <div class="lenses" id="lenses"></div>
+    <div class="lens-out" id="lensOut" aria-live="polite"></div>
+  </div>
+</section>
+
+<section class="block" id="quiz" aria-labelledby="quizT">
+  <div class="wrap">
+    <p class="eyebrow">Autoevaluación</p>
+    <h2 id="quizT">Pon a prueba lo recorrido</h2>
+    <p class="score" id="score" aria-live="polite">0 de 8 respondidas</p>
+    <div class="quiz" id="quizBox"></div>
+    <div><button class="btn" id="quizReset">Reiniciar preguntas</button></div>
+  </div>
+</section>
+
+<section class="block" id="definicion" aria-labelledby="defT">
+  <div class="wrap">
+    <p class="eyebrow">Síntesis · Objetivo 2 de la unidad</p>
+    <h2 id="defT">Definición profesional de ética</h2>
+    <p class="definition">La ética profesional del ingeniero en informática es el conjunto de <mark>virtudes, deberes y criterios de justicia</mark>, heredados de veintiséis siglos de reflexión moral, que orientan cada decisión técnica para que el software <mark>respete la dignidad, la privacidad y la seguridad de las personas</mark>, y que obligan a responder por sus consecuencias sociales.</p>
+    <div class="pillars">
+      <div class="pillar" data-era="antigua"><b>De la Antigüedad</b>El carácter: prudencia, honestidad y excelencia en el oficio.</div>
+      <div class="pillar" data-era="medieval"><b>Del Medioevo</b>La intención y el bien de la persona como límite que no se negocia.</div>
+      <div class="pillar" data-era="moderna"><b>De la Modernidad</b>El deber universal (Kant) y el cálculo de consecuencias (utilitarismo).</div>
+      <div class="pillar" data-era="contemporanea"><b>De hoy</b>Responsabilidad, justicia, diálogo, alteridad y códigos y leyes que la concretan.</div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="fuentes" aria-labelledby="refT">
+  <div class="wrap">
+    <p class="eyebrow">Referencias</p>
+    <h2 id="refT">Fuentes consultadas</h2>
+    <ul class="refs">
+      <li>Material de clase: <i>Electiva IV. Ética. Unidad I: De la historia de la ética al concepto de ética profesional</i> (eXeLearning).</li>
+      <li>Camps, V. (Ed.). (1988–1989). <i>Historia de la ética</i> (3 vols.). Crítica.</li>
+      <li>MacIntyre, A. (1970). <i>Historia de la ética</i>. Paidós.</li>
+      <li>Cortina, A. y Martínez, E. (2001). <i>Ética</i>. Akal.</li>
+      <li>Aristóteles. <i>Ética a Nicómaco</i>. Kant, I. (1785). <i>Fundamentación de la metafísica de las costumbres</i>. Mill, J. S. (1863). <i>El utilitarismo</i>.</li>
+      <li>Rawls, J. (1995). <i>Teoría de la justicia</i>. Fondo de Cultura Económica. (Original de 1971).</li>
+      <li>Jonas, H. (1995). <i>El principio de responsabilidad</i>. Herder. (Original de 1979).</li>
+      <li>Dussel, E. (1998). <i>Ética de la liberación en la edad de la globalización y de la exclusión</i>. Trotta.</li>
+      <li>Bynum, T. (2018). Computer and Information Ethics. <i>Stanford Encyclopedia of Philosophy</i>. <a href="https://plato.stanford.edu/entries/ethics-computer/" target="_blank" rel="noopener">plato.stanford.edu/entries/ethics-computer</a></li>
+      <li>ACM. (2018). <i>ACM Code of Ethics and Professional Conduct</i>. <a href="https://www.acm.org/code-of-ethics" target="_blank" rel="noopener">acm.org/code-of-ethics</a></li>
+      <li>UNESCO. (2021). <i>Recomendación sobre la ética de la inteligencia artificial</i>. <a href="https://www.unesco.org/es/artificial-intelligence/recommendation-ethics" target="_blank" rel="noopener">unesco.org</a></li>
+      <li>Unión Europea. Reglamento (UE) 2016/679 (RGPD) y Reglamento (UE) 2024/1689 (Ley de Inteligencia Artificial). <a href="https://eur-lex.europa.eu/" target="_blank" rel="noopener">eur-lex.europa.eu</a></li>
+    </ul>
+  </div>
+</section>
+
+<footer class="wrap">Electiva IV · Ética · Unidad I · Línea de tiempo elaborada con apoyo de IA (Claude) y revisada a partir del material de clase.</footer>
+
+<dialog id="dlg" aria-labelledby="dlgTitle"></dialog>
+
+<script>
+const ERAS = {
+  antigua: { name: "Ética Antigua", short: "Antigua", from: -600, to: 476, range: "s. VI a.C. – s. V d.C.",
+    text: "Centrada en la búsqueda del bien supremo, la felicidad (eudaimonía) y el cultivo de la virtud.",
+    kw: "Virtud · eudaimonía · razón · polis" },
+  medieval: { name: "Ética Medieval", short: "Medieval", from: 476, to: 1500, range: "s. V – s. XV",
+    text: "Integra la filosofía clásica con la fe cristiana: la moral se fundamenta en la ley divina y la voluntad de Dios.",
+    kw: "Ley divina · ley natural · libre albedrío · intención" },
+  moderna: { name: "Ética Moderna", short: "Moderna", from: 1500, to: 1880, range: "s. XVI – s. XIX",
+    text: "Afirma la autonomía de la razón humana frente a la autoridad religiosa: racionalismo, deber kantiano y utilitarismo.",
+    kw: "Autonomía · deber · contrato · utilidad" },
+  contemporanea: { name: "Ética Contemporánea", short: "Contemporánea", from: 1880, to: 2030, range: "fines s. XIX – hoy",
+    text: "Pluralidad de enfoques, derechos humanos, responsabilidad social y ética aplicada a la ciencia, la bioética y la tecnología.",
+    kw: "Derechos · responsabilidad · diálogo · ética aplicada" }
+};
+
+const H = [
+  // ANTIGUA
+  { id: "sofistas", era: "antigua", y: -450, yl: "c. 450 a.C.", src: "amp",
+    t: "Los sofistas", who: "Protágoras de Abdera (c. 490–420 a.C.)",
+    idea: "Maestros itinerantes que enseñaban retórica en la Atenas democrática. Sostuvieron que las normas morales son convenciones humanas (nómos) y no leyes de la naturaleza (phýsis). Abrieron el primer gran debate ético: si el bien es relativo o universal.",
+    q: "«El hombre es la medida de todas las cosas.»",
+    tags: ["Relativismo moral", "Nómos vs. phýsis", "Retórica"],
+    it: "Un producto global choca con normas culturales distintas (moderación de contenidos, privacidad). El debate relativismo/universalismo sigue vivo en cada política de plataforma." },
+  { id: "socrates", era: "antigua", y: -399, yl: "399 a.C.", src: "clase",
+    t: "Sócrates", who: "Sócrates de Atenas (470–399 a.C.)",
+    idea: "Responde a los sofistas defendiendo que existe un bien objetivo que se alcanza con la razón. Su intelectualismo moral afirma que la virtud es conocimiento y que nadie obra mal a sabiendas. Con la mayéutica, preguntaba hasta hacer nacer la verdad en el interlocutor. Fue condenado a muerte en 399 a.C. y prefirió acatar la ley antes que huir.",
+    q: "«Una vida sin examen no merece ser vivida.»",
+    tags: ["Intelectualismo moral", "Mayéutica", "Conócete a ti mismo"],
+    it: "Examinar antes de construir: preguntar «¿para qué?» y «¿a quién afecta?» ante cada requisito, en lugar de programar sin cuestionar." },
+  { id: "platon", era: "antigua", y: -387, yl: "387 a.C.", src: "clase",
+    t: "Platón y la Academia", who: "Platón (427–347 a.C.) · La República",
+    idea: "Discípulo de Sócrates, funda la Academia. Para él, el Bien es la idea suprema que da sentido a todo lo demás. El alma tiene tres partes (racional, irascible y concupiscible) y la justicia consiste en que cada una cumpla su función bajo el gobierno de la razón. De ahí nacen las cuatro virtudes cardinales.",
+    q: "«Es peor cometer una injusticia que padecerla.» (Gorgias)",
+    tags: ["Idea del Bien", "Virtudes cardinales", "Justicia", "Alma tripartita"],
+    it: "El mito del anillo de Giges pregunta si serías justo siendo invisible. En internet, el anonimato y el acceso de administrador ponen a prueba esa misma pregunta." },
+  { id: "aristoteles", era: "antigua", y: -335, yl: "c. 335 a.C.", src: "clase",
+    t: "Aristóteles y la Ética a Nicómaco", who: "Aristóteles (384–322 a.C.) · Liceo",
+    idea: "Primer tratado sistemático de ética. Todo ser humano busca la felicidad (eudaimonía), que consiste en vivir conforme a la razón. La virtud es un hábito que se adquiere practicando y es el término medio entre dos vicios: el valor está entre la cobardía y la temeridad. La prudencia (phrónesis) permite decidir bien en cada situación concreta.",
+    q: "«Somos lo que hacemos repetidamente.» (paráfrasis de Ética a Nicómaco II)",
+    tags: ["Eudaimonía", "Término medio", "Phrónesis", "Hábito"],
+    it: "Ninguna norma cubre cada caso: el buen ingeniero desarrolla prudencia profesional, hábitos de calidad y honestidad que aplica cuando no hay reglamento." },
+  { id: "epicuro", era: "antigua", y: -306, yl: "306 a.C.", src: "amp",
+    t: "Epicuro y el Jardín", who: "Epicuro de Samos (341–270 a.C.)",
+    idea: "Propone un hedonismo moderado: el bien es el placer, entendido como ausencia de dolor en el cuerpo (aponía) y de turbación en el alma (ataraxia). Para lograrlo hay que elegir con prudencia los placeres sencillos y cultivar la amistad.",
+    q: "«No es pobre quien tiene poco, sino quien desea mucho.»",
+    tags: ["Hedonismo", "Ataraxia", "Amistad"],
+    it: "El diseño persuasivo explota el deseo ilimitado (scroll infinito, notificaciones). Epicuro invita a un diseño que reduzca la ansiedad en lugar de multiplicarla." },
+  { id: "estoicos", era: "antigua", y: -300, yl: "c. 300 a.C.", src: "amp",
+    t: "El estoicismo", who: "Zenón de Citio; después Séneca, Epicteto y Marco Aurelio",
+    idea: "Vivir conforme a la naturaleza y a la razón universal (lógos). Distingue lo que depende de nosotros (juicios, decisiones) de lo que no. Busca la serenidad (apatheia) y promueve el cosmopolitismo: todos los seres humanos son ciudadanos de un mismo mundo.",
+    q: "«No nos perturban las cosas, sino las opiniones sobre las cosas.» (Epicteto)",
+    tags: ["Lógos", "Apatheia", "Cosmopolitismo", "Deber"],
+    it: "Ante la presión de los plazos y de un incidente en producción, el estoico se centra en lo que controla: su respuesta, su honestidad y su trabajo bien hecho." },
+
+  // MEDIEVAL
+  { id: "agustin", era: "medieval", y: 426, yl: "413–426", src: "clase",
+    t: "San Agustín y La ciudad de Dios", who: "Agustín de Hipona (354–430)",
+    idea: "Une el platonismo con el cristianismo. La felicidad plena solo se alcanza en Dios. El mal no es una sustancia sino la ausencia de bien, y nace del mal uso del libre albedrío. Distingue la ciudad terrena, movida por el amor propio, de la ciudad de Dios, movida por el amor a Dios.",
+    q: "«Ama y haz lo que quieras.»",
+    tags: ["Libre albedrío", "El mal como privación", "Amor"],
+    it: "La tecnología no es mala en sí: el daño aparece por el uso que se elige darle. La responsabilidad recae en quien decide cómo usarla." },
+  { id: "abelardo", era: "medieval", y: 1138, yl: "c. 1138", src: "amp",
+    t: "Abelardo: la ética de la intención", who: "Pedro Abelardo (1079–1142) · Conócete a ti mismo",
+    idea: "Sostiene que la moralidad de un acto depende de la intención con que se realiza y del consentimiento interior, no solo del acto exterior. Es un antecedente medieval de la importancia de la conciencia moral.",
+    q: "",
+    tags: ["Intención", "Consentimiento", "Conciencia"],
+    it: "El mismo código de rastreo puede servir para encontrar un teléfono robado o para espiar a una pareja. La intención del diseño importa." },
+  { id: "averroes", era: "medieval", y: 1190, yl: "c. 1190", src: "amp",
+    t: "Averroes y Maimónides recuperan a Aristóteles", who: "Averroes (1126–1198) · Maimónides (1138–1204)",
+    idea: "Los comentarios del filósofo andalusí Averroes y la Guía de perplejos del judío Maimónides devuelven a Europa la ética aristotélica y defienden la armonía entre razón y fe. Sin ellos no se entiende la síntesis de Tomás de Aquino.",
+    q: "",
+    tags: ["Razón y fe", "Transmisión del saber", "Diálogo intercultural"],
+    it: "El conocimiento avanzó gracias a la traducción y a la circulación libre de textos: un antecedente del acceso abierto y del software libre." },
+  { id: "tomas", era: "medieval", y: 1265, yl: "1265–1274", src: "clase",
+    t: "Tomás de Aquino y la Suma teológica", who: "Santo Tomás de Aquino (1225–1274)",
+    idea: "Síntesis entre Aristóteles y el cristianismo. Existe una ley natural, inscrita en la razón humana, que participa de la ley eterna de Dios. Su primer precepto es hacer el bien y evitar el mal. Formula también el principio del doble efecto para actos con consecuencias buenas y malas.",
+    q: "«Hay que hacer el bien y evitar el mal.»",
+    tags: ["Ley natural", "Ley eterna", "Doble efecto", "Bien común"],
+    it: "El principio del doble efecto se usa hoy al evaluar sistemas con usos duales, como un software de ciberseguridad que también puede servir para atacar." },
+  { id: "ockham", era: "medieval", y: 1320, yl: "c. 1320", src: "amp",
+    t: "Ockham y el voluntarismo", who: "Guillermo de Ockham (c. 1287–1347)",
+    idea: "Afirma que algo es bueno porque Dios lo quiere, y no que Dios lo quiere porque es bueno. Separa razón y fe, y prepara el terreno para la ética moderna, que buscará fundar la moral en la razón humana.",
+    q: "",
+    tags: ["Voluntarismo", "Navaja de Ockham", "Separación razón-fe"],
+    it: "La navaja de Ockham («no multiplicar los entes sin necesidad») es hoy un principio de diseño de software: la solución más simple suele ser la mejor." },
+
+  // MODERNA
+  { id: "maquiavelo", era: "moderna", y: 1513, yl: "1513", src: "amp",
+    t: "Maquiavelo escribe El príncipe", who: "Nicolás Maquiavelo (1469–1527)",
+    idea: "Separa la política de la moral: el gobernante debe juzgarse por su eficacia para conservar el poder y el Estado, no por las virtudes tradicionales. Inaugura el realismo político.",
+    q: "",
+    tags: ["Realismo político", "Eficacia", "Razón de Estado"],
+    it: "«Si funciona y genera ingresos, está bien» es una forma de maquiavelismo corporativo. Los códigos de ética profesional existen para ponerle límites." },
+  { id: "hobbes", era: "moderna", y: 1651, yl: "1651", src: "amp",
+    t: "Hobbes y el Leviatán", who: "Thomas Hobbes (1588–1679)",
+    idea: "En el estado de naturaleza, la vida es una guerra de todos contra todos. Para sobrevivir, los individuos pactan un contrato social y ceden poder a un soberano. La moral nace de ese acuerdo racional interesado.",
+    q: "«El hombre es un lobo para el hombre.» (Homo homini lupus)",
+    tags: ["Contrato social", "Estado de naturaleza", "Egoísmo racional"],
+    it: "Los términos de servicio y las normas de una comunidad en línea funcionan como pequeños contratos sociales para evitar el caos." },
+  { id: "racionalismo", era: "moderna", y: 1677, yl: "1637–1677", src: "clase",
+    t: "El racionalismo: Descartes y Spinoza", who: "René Descartes (1596–1650) · Baruch Spinoza (1632–1677)",
+    idea: "La razón, no la autoridad, es la fuente del conocimiento y de la moral. Descartes propone una moral provisional basada en la razón (1637). Spinoza publica su Ética demostrada según el orden geométrico (1677): la libertad consiste en comprender las causas de nuestros afectos.",
+    q: "",
+    tags: ["Autonomía de la razón", "Método", "Libertad como comprensión"],
+    it: "Pensar con método y evidencia, no por autoridad: la misma actitud que exige depurar un sistema o revisar código." },
+  { id: "hume", era: "moderna", y: 1739, yl: "1739", src: "amp",
+    t: "Hume: la moral nace del sentimiento", who: "David Hume (1711–1776) · Tratado de la naturaleza humana",
+    idea: "La razón no mueve a actuar; lo hacen las pasiones. Los juicios morales nacen de un sentimiento de aprobación o desaprobación compartido por simpatía. Señala que del «es» no puede deducirse el «debe» (la guillotina de Hume).",
+    q: "«La razón es, y solo debe ser, esclava de las pasiones.»",
+    tags: ["Emotivismo", "Simpatía", "Guillotina de Hume"],
+    it: "Que un algoritmo muestre lo que la gente hace («es») no dice lo que debería mostrar («debe»). Los datos no sustituyen el juicio moral." },
+  { id: "kant", era: "moderna", y: 1785, yl: "1785", src: "clase",
+    t: "Kant y el deber", who: "Immanuel Kant (1724–1804) · Fundamentación de la metafísica de las costumbres",
+    idea: "La ética no depende de las consecuencias ni de una autoridad externa, sino de la buena voluntad y del deber. El imperativo categórico manda actuar solo según máximas que puedan ser ley universal y tratar a la humanidad siempre como fin y nunca solo como medio. La persona es autónoma: se da a sí misma la ley moral.",
+    q: "«Obra de tal modo que trates a la humanidad, en tu persona y en la de cualquier otro, siempre como un fin y nunca solo como un medio.»",
+    tags: ["Buena voluntad", "Deber", "Imperativo categórico", "Dignidad", "Autonomía"],
+    it: "Los patrones oscuros (dark patterns) usan al usuario solo como medio. El consentimiento informado y la privacidad desde el diseño son exigencias kantianas." },
+  { id: "bentham", era: "moderna", y: 1789, yl: "1789", src: "clase",
+    t: "Bentham funda el utilitarismo", who: "Jeremy Bentham (1748–1832) · Introducción a los principios de la moral y la legislación",
+    idea: "Una acción es correcta si produce la mayor felicidad para el mayor número. Propone un cálculo de placeres y dolores según su intensidad, duración y alcance. Diseñó también el panóptico, una cárcel en la que un vigilante puede observar a todos sin ser visto.",
+    q: "«La mayor felicidad del mayor número es la medida de lo correcto y lo incorrecto.»",
+    tags: ["Principio de utilidad", "Cálculo felicífico", "Consecuencialismo", "Panóptico"],
+    it: "El panóptico es la metáfora clásica de la vigilancia digital. El cálculo utilitarista aparece en cada análisis de costo-beneficio de un sistema." },
+  { id: "mill", era: "moderna", y: 1861, yl: "1859–1861", src: "clase",
+    t: "Mill: El utilitarismo y Sobre la libertad", who: "John Stuart Mill (1806–1873)",
+    idea: "Refina a Bentham: no todos los placeres valen igual, y los intelectuales y morales son superiores. En Sobre la libertad (1859) formula el principio del daño: la sociedad solo puede limitar la libertad de alguien para evitar daños a otros.",
+    q: "«Es mejor ser un ser humano insatisfecho que un cerdo satisfecho.»",
+    tags: ["Placeres cualitativos", "Principio del daño", "Libertad individual"],
+    it: "El principio del daño guía debates sobre libertad de expresión y moderación de contenidos: ¿cuándo se justifica eliminar una publicación?" },
+
+  // CONTEMPORÁNEA
+  { id: "nietzsche", era: "contemporanea", y: 1887, yl: "1887", src: "amp",
+    t: "Nietzsche: La genealogía de la moral", who: "Friedrich Nietzsche (1844–1900)",
+    idea: "Critica radicalmente la moral tradicional, a la que llama «moral de esclavos». Propone una transvaloración de todos los valores. Su crítica abre la crisis de los fundamentos que caracteriza la ética contemporánea.",
+    q: "",
+    tags: ["Transvaloración", "Crítica de la moral", "Voluntad de poder"],
+    it: "Invita a preguntar de dónde vienen las normas que damos por obvias, por ejemplo los valores escondidos en los datos con que se entrena un modelo." },
+  { id: "moore", era: "contemporanea", y: 1903, yl: "1903", src: "clase",
+    t: "Moore y el nacimiento de la metaética", who: "George E. Moore (1873–1958) · Principia Ethica",
+    idea: "Inaugura la metaética, que estudia el significado y el fundamento de los términos morales. Sostiene que «bueno» es indefinible y denuncia la falacia naturalista: identificar el bien con una propiedad natural, como el placer.",
+    q: "",
+    tags: ["Metaética", "Falacia naturalista", "Lenguaje moral"],
+    it: "Definir «justo» o «sesgo» en un sistema de IA exige precisar el lenguaje moral. Existen decenas de definiciones de equidad algorítmica, a veces incompatibles." },
+  { id: "sartre", era: "contemporanea", y: 1946, yl: "1946", src: "amp",
+    t: "Sartre: libertad y responsabilidad", who: "Jean-Paul Sartre (1905–1980) · El existencialismo es un humanismo",
+    idea: "El ser humano está «condenado a ser libre»: no hay una naturaleza que le dicte qué hacer, y al elegir se hace responsable de sí y de toda la humanidad. Excusarse en las órdenes o en las circunstancias es mala fe.",
+    q: "«El hombre está condenado a ser libre.»",
+    tags: ["Libertad", "Responsabilidad", "Mala fe"],
+    it: "«Solo seguía instrucciones» no exime al programador: elegir escribir ese código ya es una decisión moral." },
+  { id: "ddhh", era: "contemporanea", y: 1948, yl: "1947–1948", src: "clase",
+    t: "Código de Núremberg y Declaración Universal de los Derechos Humanos", who: "Tribunal de Núremberg (1947) · ONU (1948)",
+    idea: "Tras los crímenes de la Segunda Guerra Mundial, el Código de Núremberg exige consentimiento voluntario para experimentar con personas. La Declaración Universal (10 de diciembre de 1948) fija un mínimo ético común: dignidad, libertad, igualdad, privacidad (art. 12) y libertad de expresión (art. 19).",
+    q: "«Todos los seres humanos nacen libres e iguales en dignidad y derechos.» (art. 1)",
+    tags: ["Derechos humanos", "Dignidad", "Consentimiento", "Privacidad"],
+    it: "El artículo 12 (vida privada) y el 19 (expresión) son la base de la protección de datos y de las políticas de contenido actuales." },
+  { id: "wiener", era: "contemporanea", y: 1950, yl: "1950", src: "amp",
+    t: "Wiener funda la ética informática", who: "Norbert Wiener (1894–1964) · The Human Use of Human Beings",
+    idea: "El creador de la cibernética advierte que las máquinas automáticas transformarán el trabajo y la sociedad, y que su uso debe guiarse por principios de libertad, igualdad y benevolencia. Se le considera el fundador de la ética de la informática.",
+    q: "",
+    tags: ["Cibernética", "Automatización", "Ética informática"],
+    it: "Más de 70 años antes de la IA generativa, Wiener ya planteaba el impacto de la automatización en el empleo y la responsabilidad de quien la diseña." },
+  { id: "rawls", era: "contemporanea", y: 1971, yl: "1971", src: "clase",
+    t: "Rawls: Teoría de la justicia", who: "John Rawls (1921–2002)",
+    idea: "Justicia como equidad. Propone imaginar una posición original tras un velo de ignorancia: sin saber qué lugar ocuparemos en la sociedad, elegiríamos principios justos. Según el principio de diferencia, las desigualdades solo se justifican si benefician a los menos aventajados.",
+    q: "",
+    tags: ["Velo de ignorancia", "Justicia como equidad", "Principio de diferencia"],
+    it: "Diseña tu sistema sin saber si serás el usuario privilegiado o el excluido: accesibilidad, conectividad limitada, sesgos contra minorías." },
+  { id: "belmont", era: "contemporanea", y: 1978, yl: "1971–1978", src: "clase",
+    t: "Nacimiento de la bioética e Informe Belmont", who: "Van Rensselaer Potter (1971) · Informe Belmont (1978)",
+    idea: "Potter acuña el término «bioética» como puente entre ciencia y valores. El Informe Belmont establece tres principios para investigar con personas: respeto por las personas, beneficencia y justicia. Es el modelo de la ética aplicada.",
+    q: "",
+    tags: ["Bioética", "Beneficencia", "Respeto", "Justicia"],
+    it: "Hacer pruebas A/B o experimentos con usuarios sin su conocimiento plantea los mismos problemas que el Informe Belmont quiso resolver." },
+  { id: "jonas", era: "contemporanea", y: 1979, yl: "1979", src: "clase",
+    t: "Jonas: El principio de responsabilidad", who: "Hans Jonas (1903–1993)",
+    idea: "El poder de la técnica moderna exige una nueva ética orientada al futuro. Propone un imperativo de responsabilidad: obrar de modo que los efectos de nuestras acciones sean compatibles con la permanencia de una vida humana auténtica. Defiende la prudencia ante riesgos irreversibles.",
+    q: "",
+    tags: ["Ética de la responsabilidad", "Generaciones futuras", "Precaución"],
+    it: "Es la base ética de evaluar riesgos antes de desplegar una IA y de considerar el impacto ambiental de los centros de datos." },
+  { id: "macintyre", era: "contemporanea", y: 1981, yl: "1981–1982", src: "clase",
+    t: "Retorno de las virtudes y ética del cuidado", who: "Alasdair MacIntyre · Tras la virtud (1981) · Carol Gilligan · La moral y la teoría (1982)",
+    idea: "MacIntyre recupera la ética aristotélica de las virtudes, vinculadas a prácticas y comunidades. Gilligan propone la ética del cuidado: junto a la justicia abstracta, la moral también se basa en las relaciones, la atención a la vulnerabilidad y la responsabilidad hacia los demás.",
+    q: "",
+    tags: ["Ética de las virtudes", "Ética del cuidado", "Comunidad"],
+    it: "Diseñar pensando en usuarios vulnerables (menores, adultos mayores, personas con discapacidad) es la ética del cuidado aplicada a la tecnología." },
+  { id: "habermas", era: "contemporanea", y: 1983, yl: "1983", src: "clase",
+    t: "Habermas y Apel: la ética del discurso", who: "Jürgen Habermas · Karl-Otto Apel",
+    idea: "Una norma es válida solo si todos los afectados pueden aceptarla en un diálogo racional, libre y en igualdad de condiciones. La moral se funda en la comunicación y no en un sujeto aislado.",
+    q: "",
+    tags: ["Ética del discurso", "Consenso", "Afectados"],
+    it: "Involucrar a los afectados en el diseño (diseño participativo, consulta pública sobre IA) aplica directamente la ética del discurso." },
+  { id: "moor", era: "contemporanea", y: 1985, yl: "1985", src: "amp",
+    t: "«¿Qué es la ética informática?»", who: "James H. Moor · Deborah G. Johnson",
+    idea: "Moor publica el artículo que define la ética informática como un campo propio. Explica que los ordenadores crean «vacíos de política»: situaciones nuevas para las que no existen normas. Ese mismo año, Johnson publica el primer manual universitario de la disciplina.",
+    q: "",
+    tags: ["Vacíos de política", "Ética informática", "Maleabilidad lógica"],
+    it: "Cada tecnología nueva (redes sociales, deepfakes, IA generativa) abre un vacío de política que los profesionales deben ayudar a llenar." },
+  { id: "acm", era: "contemporanea", y: 1992, yl: "1992 / 2018", src: "amp",
+    t: "Código de Ética y Conducta Profesional de la ACM", who: "Association for Computing Machinery",
+    idea: "La mayor asociación de profesionales de la computación aprueba en 1992 su código de ética, actualizado en 2018. Sus principios: contribuir al bienestar humano, evitar daños, ser honesto, ser justo y no discriminar, respetar la privacidad, honrar la confidencialidad y que el bien público sea la consideración principal. El IEEE tiene un código similar.",
+    q: "",
+    tags: ["Código profesional", "Evitar daños", "Privacidad", "Bien público"],
+    it: "Es el documento que convierte la historia de la ética en reglas concretas para el día a día del ingeniero en informática." },
+  { id: "dussel", era: "contemporanea", y: 1998, yl: "1998", src: "clase",
+    t: "Dussel: Ética de la liberación", who: "Enrique Dussel (1934–2023)",
+    idea: "Filósofo argentino-mexicano. Propone una ética desde América Latina y desde las víctimas del sistema. Sus principios son la alteridad (reconocer al otro, al excluido), la interculturalidad y la dignidad de los pueblos. Toda norma debe juzgarse desde quienes quedan fuera de ella.",
+    q: "",
+    tags: ["Alteridad", "Interculturalidad", "Dignidad de los pueblos", "Víctimas"],
+    it: "¿A quién excluye tu sistema? Brecha digital, idiomas no soportados y modelos entrenados con datos del norte global ignoran a los pueblos del sur." },
+  { id: "rgpd", era: "contemporanea", y: 2018, yl: "2016 / 2018", src: "amp",
+    t: "Reglamento General de Protección de Datos (RGPD)", who: "Unión Europea · Reglamento (UE) 2016/679",
+    idea: "Aprobado en 2016 y aplicable desde mayo de 2018. Convierte en ley principios éticos: consentimiento explícito, minimización de datos, derecho al olvido, portabilidad y privacidad desde el diseño y por defecto. Ese mismo año estalla el caso Cambridge Analytica.",
+    q: "",
+    tags: ["Consentimiento", "Privacidad desde el diseño", "Derecho al olvido"],
+    it: "Aunque es una ley europea, se aplica a cualquier sistema que trate datos de personas en la UE y se volvió el modelo mundial de protección de datos." },
+  { id: "unesco", era: "contemporanea", y: 2021, yl: "2021", src: "clase",
+    t: "UNESCO: Recomendación sobre la ética de la IA", who: "Adoptada por los Estados miembros de la UNESCO (noviembre de 2021)",
+    idea: "Primer marco normativo mundial sobre ética de la inteligencia artificial. Se basa en derechos humanos, dignidad, diversidad, sostenibilidad y equidad. Exige transparencia, explicabilidad, supervisión humana y evaluación del impacto ético.",
+    q: "",
+    tags: ["Ética de la IA", "Supervisión humana", "Explicabilidad", "Sostenibilidad"],
+    it: "Traduce a la IA las grandes doctrinas: dignidad (Kant), responsabilidad (Jonas), justicia (Rawls) e inclusión (Dussel)." },
+  { id: "aiact", era: "contemporanea", y: 2024, yl: "2024", src: "amp",
+    t: "Reglamento europeo de Inteligencia Artificial", who: "Unión Europea · Reglamento (UE) 2024/1689",
+    idea: "Primera ley integral sobre IA, en vigor desde agosto de 2024. Clasifica los sistemas según su riesgo: prohíbe los de riesgo inaceptable (como la puntuación social), impone obligaciones estrictas a los de alto riesgo y exige transparencia a los demás, por ejemplo avisar cuando un contenido fue generado por IA.",
+    q: "",
+    tags: ["Enfoque basado en riesgo", "Transparencia", "Prohibiciones"],
+    it: "La ética del ingeniero se vuelve obligación legal: documentar, auditar y supervisar los sistemas de IA ya no es opcional." }
+];
+
+const SEEN_KEY = "etica-tl-seen";
+let seen = new Set();
+try { seen = new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || "[]")); } catch (e) {}
+function saveSeen() { try { localStorage.setItem(SEEN_KEY, JSON.stringify([...seen])); } catch (e) {} }
+
+let eraFilter = "todas", srcFilter = "todo", visible = [], current = -1;
+
+/* Regla proporcional */
+const MIN = -600, MAX = 2030;
+const pct = y => ((y - MIN) / (MAX - MIN)) * 100;
+function buildRuler() {
+  const r = document.getElementById("ruler");
+  let h = "";
+  for (const [k, e] of Object.entries(ERAS)) {
+    h += `<button class="seg" data-era="${k}" data-jump="${k}" style="left:${pct(e.from)}%;width:${pct(e.to) - pct(e.from)}%" aria-label="Ir a ${e.name}"><span>${e.short}</span></button>`;
+  }
+  for (const y of [-500, 0, 500, 1000, 1500, 2000]) {
+    h += `<span class="tick" style="left:${pct(y)}%">${y < 0 ? -y + " a.C." : y === 0 ? "0" : y}</span>`;
+  }
+  H.forEach(x => {
+    h += `<button class="dot${seen.has(x.id) ? " seen" : ""}" data-id="${x.id}" style="left:${pct(x.y)}%" title="${x.yl} · ${x.t}" aria-label="${x.yl}: ${x.t}"></button>`;
+  });
+  r.innerHTML = h;
+}
+
+/* Línea de tiempo */
+function render() {
+  const main = document.getElementById("timeline");
+  visible = H.filter(x => (eraFilter === "todas" || x.era === eraFilter) && (srcFilter === "todo" || x.src === srcFilter));
+  let out = "";
+  for (const [k, e] of Object.entries(ERAS)) {
+    if (eraFilter !== "todas" && eraFilter !== k) continue;
+    const items = visible.filter(x => x.era === k);
+    out += `<section class="era" data-era="${k}" id="era-${k}" aria-labelledby="h-${k}"><div class="wrap">
+      <div class="era-head"><span class="range">${e.range}</span><h2 id="h-${k}">${e.name}</h2><p>${e.text}</p><p class="kw">${e.kw}</p></div>
+      ${items.length ? `<ol class="rail">${items.map(x => `
+        <li class="${seen.has(x.id) ? "seen" : ""}"><button class="card" data-id="${x.id}">
+          <span class="yr">${x.yl}</span><h3>${x.t}</h3>
+          <span class="badge ${x.src === "clase" ? "clase" : "amp"}">${x.src === "clase" ? "Clase" : "Ampliación"}</span>
+          <span class="sub">${x.who}</span>
+        </button></li>`).join("")}</ol>` : `<p class="empty">No hay hitos con este filtro en esta etapa.</p>`}
+    </div></section>`;
+  }
+  main.innerHTML = out;
+  updateProgress();
+}
+
+function updateProgress() {
+  const n = H.filter(x => seen.has(x.id)).length;
+  document.getElementById("progTxt").textContent = `${n} / ${H.length} explorados`;
+  document.getElementById("progBar").style.width = (n / H.length * 100) + "%";
+}
+
+/* Diálogo */
+const dlg = document.getElementById("dlg");
+function openItem(id) {
+  let list = visible.some(x => x.id === id) ? visible : H;
+  if (list !== visible) { eraFilter = "todas"; srcFilter = "todo"; syncChips(); render(); list = visible; }
+  current = list.findIndex(x => x.id === id);
+  showCurrent();
+  if (!dlg.open) dlg.showModal();
+}
+function showCurrent() {
+  const x = visible[current];
+  const e = ERAS[x.era];
+  dlg.dataset.era = x.era;
+  dlg.innerHTML = `<div class="dlg">
+    <div class="dlg-top">
+      <div class="meta"><span class="e">${e.name}</span><span>${x.yl}</span><span class="badge ${x.src === "clase" ? "clase" : "amp"}">${x.src === "clase" ? "Visto en clase" : "Ampliación"}</span></div>
+      <button class="close" data-close aria-label="Cerrar">×</button>
+    </div>
+    <h2 id="dlgTitle">${x.t}</h2>
+    <p class="who">${x.who}</p>
+    <p>${x.idea}</p>
+    ${x.q ? `<blockquote>${x.q}</blockquote>` : ""}
+    <div class="tags">${x.tags.map(t => `<span>${t}</span>`).join("")}</div>
+    <div class="it"><span class="eyebrow">Para un ingeniero en informática</span><p>${x.it}</p></div>
+    <div class="dlg-nav">
+      <button class="btn" data-step="-1" ${current === 0 ? "disabled" : ""}>← Anterior</button>
+      <span class="eyebrow" style="align-self:center">${current + 1} / ${visible.length}</span>
+      <button class="btn" data-step="1" ${current === visible.length - 1 ? "disabled" : ""}>Siguiente →</button>
+    </div></div>`;
+  if (!seen.has(x.id)) {
+    seen.add(x.id); saveSeen();
+    document.querySelectorAll(`[data-id="${x.id}"]`).forEach(el => {
+      if (el.classList.contains("dot")) el.classList.add("seen"); else el.parentElement.classList.add("seen");
+    });
+    updateProgress();
+  }
+}
+dlg.addEventListener("click", ev => {
+  if (ev.target === dlg || ev.target.closest("[data-close]")) { dlg.close(); return; }
+  const s = ev.target.closest("[data-step]");
+  if (s && !s.disabled) { current += +s.dataset.step; showCurrent(); }
+});
+dlg.addEventListener("keydown", ev => {
+  if (ev.key === "ArrowRight" && current < visible.length - 1) { current++; showCurrent(); }
+  if (ev.key === "ArrowLeft" && current > 0) { current--; showCurrent(); }
+});
+
+document.addEventListener("click", ev => {
+  const c = ev.target.closest(".card, .dot");
+  if (c) { openItem(c.dataset.id); return; }
+  const j = ev.target.closest("[data-jump]");
+  if (j) {
+    if (eraFilter !== "todas" && eraFilter !== j.dataset.jump) { eraFilter = "todas"; syncChips(); render(); }
+    document.getElementById("era-" + j.dataset.jump)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+});
+
+function syncChips() {
+  document.querySelectorAll("#eraChips .chip").forEach(b => b.setAttribute("aria-pressed", b.dataset.filter === eraFilter));
+  document.querySelectorAll("#srcChips .chip").forEach(b => b.setAttribute("aria-pressed", b.dataset.src === srcFilter));
+}
+document.getElementById("eraChips").addEventListener("click", ev => {
+  const b = ev.target.closest(".chip"); if (!b) return;
+  eraFilter = b.dataset.filter; syncChips(); render();
+});
+document.getElementById("srcChips").addEventListener("click", ev => {
+  const b = ev.target.closest(".chip"); if (!b) return;
+  srcFilter = b.dataset.src; syncChips(); render();
+});
+
+/* Dilema */
+const LENSES = [
+  { era: "antigua", name: "Aristóteles", sub: "Ética de la virtud",
+    txt: "La pregunta no es qué regla aplicar sino qué haría un profesional prudente y honesto. Ocultar la recolección en letra pequeña es un engaño, y repetirlo crea el hábito de la deshonestidad. La prudencia buscaría el término medio entre el negocio y el respeto al usuario.",
+    v: "No se implementa así: el carácter del profesional se forma en estas decisiones." },
+  { era: "medieval", name: "Tomás de Aquino", sub: "Ley natural",
+    txt: "El primer precepto es hacer el bien y evitar el mal. Vigilar a las personas sin que lo sepan atenta contra su bien y su dignidad. El beneficio económico es un efecto buscado directamente mediante un medio malo, así que no lo salva el principio del doble efecto.",
+    v: "Moralmente ilícito tal como está planteado." },
+  { era: "moderna", name: "Kant", sub: "Deber e imperativo categórico",
+    txt: "¿Podría universalizarse la máxima «recolecto datos ocultando el propósito cuando me conviene»? No: si todos lo hicieran, la confianza en el software desaparecería. Además, trata al usuario solo como un medio para obtener ingresos. Un consentimiento escondido no es un consentimiento real.",
+    v: "Prohibido por el deber, sean cuales sean las ganancias." },
+  { era: "moderna", name: "Utilitarismo", sub: "Bentham y Mill",
+    txt: "Suma beneficios y daños para todos los afectados: ingresos para la empresa frente a millones de usuarios expuestos a vigilancia, filtraciones, acoso o robos que permiten conocer sus rutinas. Mill añadiría el principio del daño. A gran escala, el daño agregado supera al beneficio.",
+    v: "El balance es negativo: solo se justificaría con datos agregados, anonimizados y con permiso." },
+  { era: "contemporanea", name: "Rawls", sub: "Velo de ignorancia",
+    txt: "Si no supieras si vas a ser el directivo que cobra o una usuaria que huye de un acosador y cuya ubicación termina en manos de terceros, ¿aceptarías esta regla? Tras el velo de ignorancia, nadie la elegiría. Además perjudica sobre todo a los menos aventajados.",
+    v: "Injusto: no supera la prueba de la posición original." },
+  { era: "contemporanea", name: "Jonas", sub: "Principio de responsabilidad",
+    txt: "Los datos de ubicación se almacenan durante años, se venden y se cruzan con otros. Sus efectos futuros son imprevisibles y difíciles de revertir. Ante riesgos irreversibles, la responsabilidad exige prudencia antes del lanzamiento, no después de un escándalo.",
+    v: "Aplicar precaución: no lanzar sin una evaluación de impacto." },
+  { era: "contemporanea", name: "Habermas", sub: "Ética del discurso",
+    txt: "¿Aceptarían todos los afectados esta norma en un diálogo libre e informado? Si hay que esconderla en un párrafo que nadie lee, es porque se sabe que no la aceptarían.",
+    v: "No es válida: no resistiría un diálogo con los usuarios." },
+  { era: "contemporanea", name: "Dussel", sub: "Ética de la liberación",
+    txt: "¿Quién es la víctima? Los usuarios con menos alfabetización digital, que no saben configurar permisos ni leer políticas legales, son los más expuestos. Una ética desde el otro excluido exige diseñar para protegerlos a ellos.",
+    v: "Rechazable: carga el costo sobre los más vulnerables." },
+  { era: "contemporanea", name: "Código ACM y RGPD", sub: "Ética profesional y ley",
+    txt: "El Código ACM pide evitar daños (1.2), ser honesto (1.3) y respetar la privacidad (1.6). El RGPD exige consentimiento libre, específico e informado, minimización de datos y privacidad por defecto. El ingeniero debe advertirlo por escrito y proponer una alternativa: permiso explícito (opt-in), ubicación solo mientras se usa la app y sin venta a terceros.",
+    v: "Conclusión práctica: todas las lentes convergen. Se rediseña con consentimiento real." }
+];
+function buildLenses() {
+  const box = document.getElementById("lenses");
+  box.innerHTML = LENSES.map((l, i) => `<button class="chip" data-era="${l.era}" data-lens="${i}" aria-pressed="false">${l.name}</button>`).join("");
+  box.addEventListener("click", ev => { const b = ev.target.closest("[data-lens]"); if (b) showLens(+b.dataset.lens); });
+  showLens(2);
+}
+function showLens(i) {
+  const l = LENSES[i], out = document.getElementById("lensOut");
+  document.querySelectorAll("[data-lens]").forEach(b => b.setAttribute("aria-pressed", +b.dataset.lens === i));
+  out.dataset.era = l.era;
+  out.innerHTML = `<span class="eyebrow">${l.sub}</span><h3>${l.name}</h3><p>${l.txt}</p><p class="verdict">→ ${l.v}</p>`;
+}
+
+/* Quiz */
+const QUIZ = [
+  { s: "¿Qué buscaba ante todo la ética antigua?", o: ["El cumplimiento de la ley divina", "La felicidad (eudaimonía) mediante la virtud", "La mayor felicidad para el mayor número"], a: 1,
+    f: "La ética antigua se centró en el bien supremo, la eudaimonía, y en el cultivo de la virtud." },
+  { s: "Para Aristóteles, la virtud es…", o: ["Un término medio entre dos vicios, adquirido por hábito", "Un mandato que Dios revela", "Un sentimiento de simpatía"], a: 0,
+    f: "El valor, por ejemplo, está entre la cobardía y la temeridad, y se aprende practicando." },
+  { s: "¿Quién formuló «hay que hacer el bien y evitar el mal» como primer precepto de la ley natural?", o: ["San Agustín", "Kant", "Santo Tomás de Aquino"], a: 2,
+    f: "Es el primer precepto de la ley natural en la Suma teológica." },
+  { s: "Para Kant, la moralidad de una acción depende de…", o: ["Sus consecuencias", "La buena voluntad y el deber", "La autoridad del Estado"], a: 1,
+    f: "Kant separa la moral de las consecuencias y de la autoridad externa: cuenta obrar por deber." },
+  { s: "«La mayor felicidad del mayor número» es el principio del…", o: ["Utilitarismo", "Estoicismo", "Racionalismo"], a: 0,
+    f: "Lo formuló Bentham y lo refinó Mill." },
+  { s: "El «velo de ignorancia» pertenece a…", o: ["Habermas", "Rawls", "Jonas"], a: 1,
+    f: "Rawls lo propone en Teoría de la justicia (1971)." },
+  { s: "La alteridad, la interculturalidad y la dignidad de los pueblos son principios de…", o: ["Hans Jonas", "Enrique Dussel", "John Stuart Mill"], a: 1,
+    f: "Son los ejes de la ética de la liberación de Dussel." },
+  { s: "¿Qué documento de 2021 es el primer marco mundial sobre ética de la IA?", o: ["El RGPD", "El Código ACM", "La Recomendación de la UNESCO"], a: 2,
+    f: "Fue adoptada por los Estados miembros de la UNESCO en noviembre de 2021." }
+];
+let answers = {};
+function buildQuiz() {
+  const box = document.getElementById("quizBox");
+  box.innerHTML = QUIZ.map((q, i) => `<div class="q" data-q="${i}">
+    <span class="n">Pregunta ${i + 1} de ${QUIZ.length}</span>
+    <p class="stem">${q.s}</p>
+    <div class="opts">${q.o.map((o, j) => `<button class="opt" data-o="${j}">${o}</button>`).join("")}</div>
+    <p class="fb" aria-live="polite"></p></div>`).join("");
+  updateScore();
+}
+document.getElementById("quizBox").addEventListener("click", ev => {
+  const b = ev.target.closest(".opt"); if (!b || b.disabled) return;
+  const qEl = b.closest(".q"), i = +qEl.dataset.q, j = +b.dataset.o, q = QUIZ[i];
+  answers[i] = j === q.a;
+  qEl.querySelectorAll(".opt").forEach((o, k) => {
+    o.disabled = true;
+    if (k === q.a) o.classList.add("right"); else if (k === j) o.classList.add("wrong");
+  });
+  qEl.querySelector(".fb").textContent = (j === q.a ? "Correcto. " : "No es correcto. ") + q.f;
+  updateScore();
+});
+function updateScore() {
+  const n = Object.keys(answers).length, ok = Object.values(answers).filter(Boolean).length;
+  document.getElementById("score").textContent = n < QUIZ.length
+    ? `${n} de ${QUIZ.length} respondidas · ${ok} correctas`
+    : `Resultado: ${ok} de ${QUIZ.length} correctas${ok === QUIZ.length ? ". ¡Excelente!" : ok >= 6 ? ". Muy bien." : ". Revisa los hitos y vuelve a intentarlo."}`;
+}
+document.getElementById("quizReset").addEventListener("click", () => { answers = {}; buildQuiz(); });
+
+buildRuler();
+render();
+buildLenses();
+buildQuiz();
+</script>
+
+</body>
+</html>
